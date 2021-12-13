@@ -38,13 +38,38 @@ Cs={value[0] for value in lsddict.values()}#辅音列表
 Vs={value[1] for value in lsddict.values()}#元音列表
 
 #oto转vsdxmf
-vsdxmfdict={}
-def lineconvert(otoline,name=""):
+vsdxmfdict={}#{vsdxmf记号:oto记号}
+
+#CV
+print("====CV====")
+for (CV,sp) in lsddict.items():
+    if(CV in otodict):
+        vsdxmfdict[sp[0]+" "+sp[1]]=CV
+        #lineconvert(otodict[CV],sp[0]+" "+sp[1])
+    else:
+        print(CV+" 缺失")
+#VC、VV
+print("====VC====")
+for (V,C) in itertools.product(Vs,Cs|Vs|{""}):
+    VCotokey=Valias.get(V,V)+" "+(Calias|Valias).get(C,C)
+    if(VCotokey in otodict):
+        vsdxmfdict[V+" "+C]=VCotokey
+        #lineconvert(otodict[VCotokey],V+" "+C)
+    else:
+        print(VCotokey+" 缺失")
+        #print('"'+Calias.get(C,C)+'":"",')
+
+#字典反转去重
+vsdxmfdict_r={}#{oto记号:[vsdxmf记号]}
+for (vskey,otokey) in vsdxmfdict.items():
+    vsdxmfdict_r[otokey]=vsdxmfdict_r.get(otokey,[])+[vskey]
+#转换
+def lineconvert(otoline,name=[]):
     #print(otoline)
     global vsdxmfdict
-    if(name==""):
-        name=otoline[1]
-    vsdxmfdict[name]=[
+    if(name==[]):
+        name=[otoline[1]]
+    return [
         name,
         otoline[0],
         otoline[2],
@@ -53,34 +78,25 @@ def lineconvert(otoline,name=""):
         otoline[2]-otoline[4],
         otoline[2]+otoline[6],
     ]
-#CV
-print("====CV====")
-for (CV,sp) in lsddict.items():
-    if(CV in otodict):
-        lineconvert(otodict[CV],sp[0]+" "+sp[1])
-    else:
-        print(CV+" 缺失")
-#VC、VV
-print("====VC====")
-for (V,C) in itertools.product(Vs,Cs|Vs|{""}):
-    VCotokey=Valias.get(V,V)+" "+Calias.get(C,C)
-    if(VCotokey in otodict):
-        lineconvert(otodict[VCotokey],V+" "+C)
-    else:
-        print(VCotokey+" 缺失")
-        #print('"'+Calias.get(C,C)+'":"",')
+vsdxmf=[lineconvert(otodict[otokey],vskeys) for (otokey,vskeys) in vsdxmfdict_r.items()]
 #缺失的开头音用空白音频
+begins=[]
 print("====开头音====")
-for C in Cs|Vs:
+for C in (Cs|Vs)-{""," "}:
     if(not(" "+C in vsdxmfdict)):
         print("开头音"+" "+C)
-        vsdxmfdict[" "+C]=[" "+C,"empty.wav",1100,1300,1400,1500,1200]
+        begins.append(" "+C)
+vsdxmf.append([begins,"empty.wav",1100,1300,1400,1500,1200])
 
 #输出vsdxmf文件
 with open(otopath.replace("oto.ini","main.vsdxmf"),"w") as vsdxmffile:
-    for (key,value) in vsdxmfdict.items():
+    for value in vsdxmf:
+        names=value[0]
+        value[0]=names[0]
         value=[str(i) for i in value]
         vsdxmffile.write(",".join(value)+"\n")
+        for name in names[1:]:
+            vsdxmffile.write("{},#{},0,0,0,0,0\n".format(name,names[0]))
 
 #for i in lsddict.items():
 #    print(i)
